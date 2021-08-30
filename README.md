@@ -13,4 +13,4 @@
 ### License
 
 Copyright © 2021, [acvcmaster](https://github.com/acvcmaster).
-Released under the [MIT License](License).
+Released under the [MIT License](LICENSE.md).
