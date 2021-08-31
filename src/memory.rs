@@ -1,4 +1,8 @@
-use crate::{bios::Bios, generic_error::GenericError, memory_region::{MemoryRegionType, REGIONS}};
+use crate::{
+    bios::Bios,
+    generic_error::GenericError,
+    memory_region::{MemoryRegionType, REGIONS},
+};
 
 #[derive(Debug, Clone)]
 pub struct Memory {
@@ -43,6 +47,30 @@ impl Memory {
 
         Err(GenericError {
             message: "LOAD32_PERIPHERAL_NOT_FOUND".to_string(),
+        })
+    }
+
+    pub fn store32(&self, address: u32, word: u32) -> Result<(), GenericError> {
+        for i in 0..16 {
+            let region = REGIONS[i];
+
+            match region.contains(address) {
+                Some(offset) => {
+                    return Ok(match region.2 {
+                        MemoryRegionType::RAM => (),
+                        MemoryRegionType::ExpansionRegion => (),
+                        MemoryRegionType::Scratchpad => (),
+                        MemoryRegionType::HardwareRegisters => (),
+                        MemoryRegionType::BIOS => (),
+                        MemoryRegionType::IOPorts => (),
+                    })
+                }
+                None => continue,
+            }
+        }
+
+        Err(GenericError {
+            message: "STORE32_PERIPHERAL_NOT_FOUND".to_string(),
         })
     }
 

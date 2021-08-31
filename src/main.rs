@@ -12,6 +12,7 @@ pub mod logger;
 mod memory;
 mod memory_region;
 mod decoded_instruction;
+mod cpu_instructions;
 
 /// The entry point of the program
 fn main() {

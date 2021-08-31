@@ -10,6 +10,7 @@ use crate::{
 pub struct Cpu {
     pub pc: u32,
     pub memory: Memory,
+    pub gpr: [u32; 32], // General Purpose Registers ($0 - $31)
 }
 
 impl Cpu {
@@ -17,6 +18,7 @@ impl Cpu {
         Self {
             pc: 0xbfc00000,
             memory: Memory::new(),
+            gpr: [0; 32],
         }
     }
 
@@ -26,11 +28,15 @@ impl Cpu {
 
         self.pc = pc.wrapping_add(4);
 
-        let result = self.decode_and_execute(instruction);
+        let result = self.decode_and_execute(instruction, true);
         handle_critical_result(result, Some("Instruction processing error:"));
     }
 
-    pub fn decode_and_execute(&self, instruction: u32) -> Result<(), GenericError> {
+    pub fn decode_and_execute(
+        &mut self,
+        instruction: u32,
+        print: bool,
+    ) -> Result<(), GenericError> {
         let decoded_instruction = DecodedInstruction::from(instruction);
 
         match decoded_instruction {
@@ -41,72 +47,70 @@ impl Cpu {
                 rd,
                 shamt,
             } => match op {
-                ROpType::Add => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Addu => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::And => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Brk => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Div => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Jalr => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Jr => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Mfhi => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Mflo => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Mult => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Nop => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Nor => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Or => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Sll => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Slt => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Sltu => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Srl => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Sub => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Subu => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Syscall => self.instruction_error(format!("{:?}", op), instruction, None),
-                ROpType::Xor => self.instruction_error(format!("{:?}", op), instruction, None),
+                ROpType::Add => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Addu => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::And => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Brk => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Div => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Jalr => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Jr => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Mfhi => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Mflo => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Mult => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Nop => self.nop(print),
+                ROpType::Nor => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Or => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Sll => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Slt => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Sltu => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Srl => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Sub => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Subu => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Syscall => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Xor => self.instruction_error(format!("{:?}", op), instruction, false),
             },
             DecodedInstruction::I { op, rs, rt, imm } => match op {
-                IOpType::Addi => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Addiu => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Andi => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Beq => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Blez => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Bne => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Lb => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Lbu => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Ldc1 => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Lh => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Lhu => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Lui => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Lw => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Lwc1 => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Ori => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Sb => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Sh => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Slti => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Sltiu => self.instruction_error(format!("{:?}", op), instruction, None),
-                IOpType::Sw => self.instruction_error(format!("{:?}", op), instruction, None),
+                IOpType::Addi => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Addiu => self.addiu(rt, rs, imm, print),
+                IOpType::Andi => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Beq => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Blez => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Bne => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Lb => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Lbu => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Ldc1 => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Lh => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Lhu => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Lui => self.lui(rt, imm, print),
+                IOpType::Lw => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Lwc1 => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Ori => self.ori(rt, rs, imm, print),
+                IOpType::Sb => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Sh => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Slti => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Sltiu => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Sw => self.sw(rt, rs, imm, print),
             },
             DecodedInstruction::J { op, addr } => match op {
-                JOpType::J => self.instruction_error(format!("{:?}", op), instruction, None),
-                JOpType::Jal => self.instruction_error(format!("{:?}", op), instruction, None),
+                JOpType::J => self.instruction_error(format!("{:?}", op), instruction, false),
+                JOpType::Jal => self.instruction_error(format!("{:?}", op), instruction, false),
             },
             DecodedInstruction::F { op, rt, rs, rd } => match op {
-                FOpType::Addd => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Adds => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Cvtdw => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Cvtsd => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Divd => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Divs => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Mfc1 => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Movd => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Movs => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Mtc1 => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Muld => self.instruction_error(format!("{:?}", op), instruction, None),
-                FOpType::Muls => self.instruction_error(format!("{:?}", op), instruction, None),
+                FOpType::Addd => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Adds => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Cvtdw => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Cvtsd => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Divd => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Divs => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Mfc1 => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Movd => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Movs => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Mtc1 => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Muld => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Muls => self.instruction_error(format!("{:?}", op), instruction, false),
             },
             DecodedInstruction::E { op, instruction } => match op {
-                EOpType::Unknown => {
-                    self.instruction_error(format!("{:?}", op), instruction, Some(true))
-                }
+                EOpType::Unknown => self.instruction_error(format!("{:?}", op), instruction, true),
             },
         }
     }
@@ -115,19 +119,19 @@ impl Cpu {
         &self,
         op: String,
         instruction: u32,
-        unknown: Option<bool>,
+        unknown: bool,
     ) -> Result<(), GenericError> {
         Err(GenericError {
-            message: if unknown == None {
+            message: if unknown {
                 format!(
-                    "UNIMPLEMENTED_INSTRUCTION_{} (0x{:08x} at 0x{:08x})",
-                    op,
+                    "UNKNOWN_INSTRUCTION (found 0x{:08x} at 0x{:08x})",
                     instruction,
                     self.pc.wrapping_sub(4)
                 )
             } else {
                 format!(
-                    "UNKNOWN_INSTRUCTION (found 0x{:08x} at 0x{:08x})",
+                    "UNIMPLEMENTED_INSTRUCTION_{} (0x{:08x} at 0x{:08x})",
+                    op,
                     instruction,
                     self.pc.wrapping_sub(4)
                 )

@@ -86,7 +86,7 @@ pub enum DecodedInstruction {
         op: IOpType,
         rs: u32,
         rt: u32,
-        imm: i16,
+        imm: u32,
     },
     J {
         op: JOpType,
@@ -122,7 +122,7 @@ impl DecodedInstruction {
             op,
             rs: ((word & 0x3e00000) >> 21) as u32,
             rt: ((word & 0x1f0000) >> 16) as u32,
-            imm: (word & 0xffff) as i16,
+            imm: (word & 0xffff) as u32,
         }
     }
 
