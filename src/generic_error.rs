@@ -1,6 +1,6 @@
 use std::error::Error;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct GenericError {
     pub message: String,
 }

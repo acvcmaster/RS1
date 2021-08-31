@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["--bios", "bios/scph1001.bin"],
             "cwd": "${workspaceFolder}"
         },
         {

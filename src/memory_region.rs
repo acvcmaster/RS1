@@ -1,7 +1,7 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct MemoryRegion(pub u32, pub u32, pub MemoryRegionType);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum MemoryRegionType {
     RAM,
     ExpansionRegion,

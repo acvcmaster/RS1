@@ -1,7 +1,7 @@
 use std::{error::Error, process};
 
 
-pub fn handle_result<T: Default, E: Error>(result: Result<T, E>, message: Option<String>) -> T {
+pub fn handle_result<T: Default, E: Error>(result: Result<T, E>, message: Option<&'static str>) -> T {
     match result {
         Ok(val) => val,
         Err(err) => {
@@ -11,7 +11,7 @@ pub fn handle_result<T: Default, E: Error>(result: Result<T, E>, message: Option
     }
 }
 
-pub fn handle_critical_result<T: Default, E: Error>(result: Result<T, E>, message: Option<String>) -> T {
+pub fn handle_critical_result<T: Default, E: Error>(result: Result<T, E>, message: Option<&'static str>) -> T {
     match result {
         Ok(val) => val,
         Err(err) => {
@@ -22,7 +22,7 @@ pub fn handle_critical_result<T: Default, E: Error>(result: Result<T, E>, messag
     }
 }
 
-pub fn log_error<E: Error>(message: Option<String>, err: E) {
+pub fn log_error<E: Error>(message: Option<&'static str>, err: E) {
     match message {
         None => eprintln!("{}", err),
         Some(msg) => eprintln!("{} {}", msg, err)

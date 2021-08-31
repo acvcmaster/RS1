@@ -1,19 +1,25 @@
 use cpu::Cpu;
+use emulator_args::parse_emulator_args;
 
 use bios::Bios;
 use logger::handle_critical_result;
 
 pub mod bios;
 mod cpu;
+mod emulator_args;
+pub mod generic_error;
 pub mod logger;
 mod memory;
 mod memory_region;
-pub mod generic_error;
+mod decoded_instruction;
 
 /// The entry point of the program
 fn main() {
-    let result = Bios::new(&"bios/scph1001.bin".to_string());
-    let bios = handle_critical_result(result, Some("Failed to load bios:".to_string()));
+    let args = parse_emulator_args();
+
+    let result = Bios::new(&args.bios);
+    let bios = handle_critical_result(result, Some("Failed to load bios:"));
+
     let mut cpu = Cpu::new();
 
     cpu.load_bios(bios);

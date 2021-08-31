@@ -48,11 +48,12 @@ impl Default for Bios {
 impl Debug for Bios {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let size = self.data.len();
-        let formatted = format!(
+
+        write!(
+            f,
             "Bios {{ data<{}>: [{}] }}",
             size,
             if size < 1 { "" } else { "..." }
-        );
-        f.write_str(&formatted)
+        )
     }
 }
