@@ -3,6 +3,7 @@ use clap::{App, Arg};
 #[derive(Debug, Clone, Default)]
 pub struct EmulatorArgs {
     pub bios: String,
+    pub debug: bool,
 }
 
 pub fn parse_emulator_args() -> EmulatorArgs {
@@ -18,9 +19,16 @@ pub fn parse_emulator_args() -> EmulatorArgs {
                 .about("Sets the path of the bios file to use")
                 .required(true),
         )
+        .arg(
+            Arg::new("debug")
+                .short('d')
+                .long("debug")
+                .about("Sets the debug flag"),
+        )
         .get_matches();
 
     EmulatorArgs {
         bios: matches.value_of("bios").unwrap_or_default().to_owned(),
+        debug: matches.is_present("debug"),
     }
 }

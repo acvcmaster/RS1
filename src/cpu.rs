@@ -22,13 +22,13 @@ impl Cpu {
         }
     }
 
-    pub fn run_next_instruction(&mut self) {
+    pub fn run_next_instruction(&mut self, print: bool) {
         let pc = self.pc;
         let instruction = self.fetch32(pc);
 
         self.pc = pc.wrapping_add(4);
 
-        let result = self.decode_and_execute(instruction, true);
+        let result = self.decode_and_execute(instruction, print);
         handle_critical_result(result, Some("Instruction processing error:"));
 
         self.gpr[0] = 0; // $0 is always zero

@@ -3,17 +3,16 @@ use emulator_args::parse_emulator_args;
 
 use bios::Bios;
 use logger::handle_critical_result;
-use memory::Memory;
 
 pub mod bios;
 mod cpu;
+mod cpu_instructions;
+mod decoded_instruction;
 mod emulator_args;
 pub mod generic_error;
 pub mod logger;
 mod memory;
 mod memory_region;
-mod decoded_instruction;
-mod cpu_instructions;
 
 /// The entry point of the program
 fn main() {
@@ -27,6 +26,6 @@ fn main() {
     cpu.load_bios(bios);
 
     loop {
-        cpu.run_next_instruction();
+        cpu.run_next_instruction(args.debug);
     }
 }
