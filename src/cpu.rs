@@ -30,6 +30,8 @@ impl Cpu {
 
         let result = self.decode_and_execute(instruction, true);
         handle_critical_result(result, Some("Instruction processing error:"));
+
+        self.gpr[0] = 0; // $0 is always zero
     }
 
     pub fn decode_and_execute(

@@ -3,6 +3,7 @@ use emulator_args::parse_emulator_args;
 
 use bios::Bios;
 use logger::handle_critical_result;
+use memory::Memory;
 
 pub mod bios;
 mod cpu;

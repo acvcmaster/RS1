@@ -17,28 +17,40 @@ pub struct Memory {
 impl Memory {
     pub fn new() -> Self {
         Self {
-            ram: Vec::new(),
-            expansion_region_1: Vec::new(),
-            scratchpad: Vec::new(),
-            hardware_registers: Vec::new(),
+            ram: vec![0; 2048 * 1024],
+            expansion_region_1: vec![0; 8192 * 1024],
+            scratchpad: vec![0; 1024],
+            hardware_registers: vec![0; 8 * 1024],
             bios: Bios::default(),
-            io_ports: Vec::new(),
+            io_ports: vec![0; 512],
         }
     }
 
     pub fn load32(&self, address: u32) -> Result<u32, GenericError> {
+        if address % 4 != 0 {
+            return Err(GenericError {
+                message: format!("LOAD32_UNALIGNED_WORD_BOUNDARY (from 0x{:x})", address),
+            });
+        }
+
         for i in 0..16 {
             let region = REGIONS[i];
 
             match region.contains(address) {
                 Some(offset) => {
                     return Ok(match region.2 {
-                        MemoryRegionType::RAM => 0,
-                        MemoryRegionType::ExpansionRegion => 0,
-                        MemoryRegionType::Scratchpad => 0,
-                        MemoryRegionType::HardwareRegisters => 0,
+                        MemoryRegionType::RAM => Memory::load_generic(&self.ram, offset),
+                        MemoryRegionType::ExpansionRegion => {
+                            Memory::load_generic(&self.expansion_region_1, offset)
+                        }
+                        MemoryRegionType::Scratchpad => {
+                            Memory::load_generic(&self.scratchpad, offset)
+                        }
+                        MemoryRegionType::HardwareRegisters => {
+                            Memory::load_generic(&self.hardware_registers, offset)
+                        }
                         MemoryRegionType::BIOS => self.bios.load32(offset),
-                        MemoryRegionType::IOPorts => 0,
+                        MemoryRegionType::IOPorts => Memory::load_generic(&self.io_ports, offset),
                     })
                 }
                 None => continue,
@@ -46,35 +58,72 @@ impl Memory {
         }
 
         Err(GenericError {
-            message: "LOAD32_PERIPHERAL_NOT_FOUND".to_string(),
+            message: format!("LOAD32_PERIPHERAL_NOT_FOUND"),
         })
     }
 
-    pub fn store32(&self, address: u32, word: u32) -> Result<(), GenericError> {
+    pub fn store32(&mut self, address: u32, word: u32) -> Result<(), GenericError> {
+        if address % 4 != 0 {
+            return Err(GenericError {
+                message: format!("STORE32_UNALIGNED_WORD_BOUNDARY (into 0x{:x})", address),
+            });
+        }
+
         for i in 0..16 {
             let region = REGIONS[i];
 
             match region.contains(address) {
                 Some(offset) => {
                     return Ok(match region.2 {
-                        MemoryRegionType::RAM => (),
-                        MemoryRegionType::ExpansionRegion => (),
-                        MemoryRegionType::Scratchpad => (),
-                        MemoryRegionType::HardwareRegisters => (),
-                        MemoryRegionType::BIOS => (),
-                        MemoryRegionType::IOPorts => (),
-                    })
+                        MemoryRegionType::RAM => Memory::store_generic(&mut self.ram, offset, word),
+                        MemoryRegionType::ExpansionRegion => {
+                            Memory::store_generic(&mut self.expansion_region_1, offset, word)
+                        }
+                        MemoryRegionType::Scratchpad => {
+                            Memory::store_generic(&mut self.scratchpad, offset, word)
+                        }
+                        MemoryRegionType::HardwareRegisters => {
+                            Memory::store_generic(&mut self.hardware_registers, offset, word)
+                        }
+                        MemoryRegionType::BIOS => (), // BIOS is read-only
+                        MemoryRegionType::IOPorts => {
+                            Memory::store_generic(&mut self.io_ports, offset, word)
+                        }
+                    });
                 }
                 None => continue,
             }
         }
 
         Err(GenericError {
-            message: "STORE32_PERIPHERAL_NOT_FOUND".to_string(),
+            message: format!("STORE32_PERIPHERAL_NOT_FOUND"),
         })
     }
 
     pub fn load_bios(&mut self, bios: Bios) {
         self.bios = bios;
+    }
+
+    pub fn load_generic(data: &Vec<u8>, offset: u32) -> u32 {
+        let offset = offset as usize;
+        let b0 = data[offset + 0] as u32;
+        let b1 = data[offset + 1] as u32;
+        let b2 = data[offset + 2] as u32;
+        let b3 = data[offset + 3] as u32;
+        b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
+    }
+
+    pub fn store_generic(data: &mut Vec<u8>, offset: u32, word: u32) {
+        let address = offset as usize;
+
+        let b0 = (word & 0xff) as u8;
+        let b1 = ((word & 0xff00) >> 8) as u8;
+        let b2 = ((word & 0xff0000) >> 16) as u8;
+        let b3 = ((word & 0xff000000) >> 24) as u8;
+
+        data[address + 0] = b0;
+        data[address + 1] = b1;
+        data[address + 2] = b2;
+        data[address + 3] = b3;
     }
 }

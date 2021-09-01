@@ -1,4 +1,4 @@
-use crate::{cpu::Cpu, generic_error::GenericError, logger::handle_critical_result};
+use crate::{cpu::Cpu, generic_error::GenericError};
 
 impl Cpu {
     pub fn lui(&mut self, rt: u32, imm: u32, print: bool) -> Result<(), GenericError> {
@@ -24,14 +24,15 @@ impl Cpu {
     pub fn sw(&mut self, rt: u32, rs: u32, imm: u32, print: bool) -> Result<(), GenericError> {
         let base = self.gpr[rs as usize] as i32;
         let offset = imm as i32;
+        let value = self.gpr[rt as usize];
 
-        let result = self.memory.store32((base + offset) as u32, imm);
+        let result = self.memory.store32((base + offset) as u32, value);
 
         if result.is_err() {
             return result;
         } else {
             if print {
-                println!("sw ${}, {}(${})", rt, offset, rs);
+                println!("sw ${}, 0x{:x}(${})", rt, offset, rs);
             }
             Ok(())
         }
@@ -45,7 +46,7 @@ impl Cpu {
     }
 
     pub fn addiu(&mut self, rt: u32, rs: u32, imm: u32, print: bool) -> Result<(), GenericError> {
-        self.gpr[rt as usize] = self.gpr[rs as usize] + imm;
+        self.gpr[rt as usize] = self.gpr[rs as usize].wrapping_add(imm);
 
         if print {
             println!("addiu ${}, ${}, 0x{:x}", rt, rs, imm);
