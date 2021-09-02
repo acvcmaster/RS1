@@ -2,7 +2,7 @@ use crate::{cpu::Cpu, generic_error::GenericError};
 
 impl Cpu {
     pub fn lui(&mut self, rt: u32, imm: u32, print: bool) -> Result<(), GenericError> {
-        self.gpr[rt as usize] = imm << 16;
+        self.set_reg(rt, imm << 16);
 
         if print {
             println!("lui ${}, 0x{:x}", rt, imm);
@@ -12,7 +12,7 @@ impl Cpu {
     }
 
     pub fn ori(&mut self, rt: u32, rs: u32, imm: u32, print: bool) -> Result<(), GenericError> {
-        self.gpr[rt as usize] = self.gpr[rs as usize] | imm;
+        self.set_reg(rt, self.reg(rs) | imm);
 
         if print {
             println!("ori ${}, ${}, 0x{:x}", rt, rs, imm);
@@ -46,7 +46,7 @@ impl Cpu {
     }
 
     pub fn addiu(&mut self, rt: u32, rs: u32, imm: u32, print: bool) -> Result<(), GenericError> {
-        self.gpr[rt as usize] = self.gpr[rs as usize].wrapping_add(imm);
+        self.set_reg(rt, self.reg(rs).wrapping_add(imm));
 
         if print {
             println!("addiu ${}, ${}, 0x{:x}", rt, rs, imm);

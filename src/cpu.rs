@@ -30,8 +30,6 @@ impl Cpu {
 
         let result = self.decode_and_execute(instruction, print);
         handle_critical_result(result, Some("Instruction processing error:"));
-
-        self.gpr[0] = 0; // $0 is always zero
     }
 
     pub fn decode_and_execute(
@@ -148,5 +146,14 @@ impl Cpu {
 
     pub fn load_bios(&mut self, bios: Bios) {
         self.memory.load_bios(bios);
+    }
+
+    pub fn reg(&self, index: u32) -> u32 {
+        self.gpr[index as usize]
+    }
+
+    pub fn set_reg(&mut self, index: u32, value: u32) {
+        self.gpr[index as usize] = value;
+        self.gpr[0] = 0; // $0 is always zero
     }
 }

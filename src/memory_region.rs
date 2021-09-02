@@ -9,6 +9,7 @@ pub enum MemoryRegionType {
     HardwareRegisters,
     BIOS,
     IOPorts,
+    MemlControl
 }
 
 impl MemoryRegion {
@@ -54,7 +55,9 @@ pub const BIOS_3: MemoryRegion = MemoryRegion(0xbfc00000, 0x80000, MemoryRegionT
 
 pub const IO_PORTS: MemoryRegion = MemoryRegion(0xfffe0000, 0x200, MemoryRegionType::IOPorts);
 
-pub const REGIONS: [MemoryRegion; 16] = [
+pub const MEMLCONTROL: MemoryRegion = MemoryRegion(0x1f801000, 0x24, MemoryRegionType::MemlControl);
+
+pub const REGIONS: [MemoryRegion; 17] = [
     RAM_1,
     RAM_2,
     RAM_3,
@@ -71,4 +74,5 @@ pub const REGIONS: [MemoryRegion; 16] = [
     BIOS_2,
     BIOS_3,
     IO_PORTS,
+    MEMLCONTROL
 ];
