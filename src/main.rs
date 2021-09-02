@@ -4,15 +4,16 @@ use emulator_args::parse_emulator_args;
 use bios::Bios;
 use logger::handle_critical_result;
 
-pub mod bios;
+mod bios;
 mod cpu;
 mod cpu_instructions;
 mod decoded_instruction;
 mod emulator_args;
-pub mod generic_error;
-pub mod logger;
+mod generic_error;
+mod logger;
 mod memory;
 mod memory_region;
+mod memlcontrol;
 
 /// The entry point of the program
 fn main() {

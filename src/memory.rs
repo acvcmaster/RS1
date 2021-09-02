@@ -1,6 +1,7 @@
 use crate::{
     bios::Bios,
     generic_error::GenericError,
+    memlcontrol::Memlcontrol,
     memory_region::{MemoryRegionType, REGIONS},
 };
 
@@ -12,6 +13,8 @@ pub struct Memory {
     pub hardware_registers: Vec<u8>, // 8K (0x1f801000, 0x9f801000, 0xbf801000)
     pub bios: Bios,                  // 512K (0x1fc00000, 0x9fc00000, 0xbfc00000)
     pub io_ports: Vec<u8>,           // 512B (0xfffe0000)
+    pub ram_size: Vec<u8>,           // 4B (0x1f801060)
+    pub cache_control: Vec<u8>,      // 4B (0xfffe0130)
 }
 
 impl Memory {
@@ -23,6 +26,8 @@ impl Memory {
             hardware_registers: vec![0; 8 * 1024],
             bios: Bios::default(),
             io_ports: vec![0; 512],
+            ram_size: vec![0; 4],
+            cache_control: vec![0; 4],
         }
     }
 
@@ -51,7 +56,11 @@ impl Memory {
                         }
                         MemoryRegionType::BIOS => self.bios.load32(offset),
                         MemoryRegionType::IOPorts => Memory::load_generic(&self.io_ports, offset),
-                        MemoryRegionType::MemlControl => handle_memlcontrol_read(offset)
+                        MemoryRegionType::MemlControl => Memlcontrol::read_32(offset),
+                        MemoryRegionType::RAMSize => Memory::load_generic(&self.ram_size, offset),
+                        MemoryRegionType::CacheControl => {
+                            Memory::load_generic(&self.cache_control, offset)
+                        }
                     })
                 }
                 None => continue,
@@ -90,9 +99,17 @@ impl Memory {
                         MemoryRegionType::IOPorts => {
                             Memory::store_generic(&mut self.io_ports, offset, word)
                         }
-                        MemoryRegionType::MemlControl => if let Some(value) = handle_memlcontrol_store(offset, word) {
-                            return value;
-                        },
+                        MemoryRegionType::MemlControl => {
+                            if let Some(value) = Memlcontrol::store_32(offset, word) {
+                                return value;
+                            }
+                        }
+                        MemoryRegionType::RAMSize => {
+                            Memory::store_generic(&mut self.ram_size, offset, word)
+                        }
+                        MemoryRegionType::CacheControl => {
+                            Memory::store_generic(&mut self.cache_control, offset, word)
+                        }
                     });
                 }
                 None => continue,
@@ -129,47 +146,5 @@ impl Memory {
         data[address + 1] = b1;
         data[address + 2] = b2;
         data[address + 3] = b3;
-    }
-}
-
-fn handle_memlcontrol_store(offset: u32, word: u32) -> Option<Result<(), GenericError>> {
-    match offset {
-        0 => {
-            if word != 0x1f000000 {
-                return Some(Err(GenericError {
-                    message: format!(
-                        "STORE32_BAD_EXPANSION_1_BASE_ADDRESS (0x{:x})",
-                        word
-                    ),
-                }));
-            }
-        }
-        4 => {
-            if word != 0x1f802000 {
-                return Some(Err(GenericError {
-                    message: format!(
-                        "STORE32_BAD_EXPANSION_2_BASE_ADDRESS (0x{:x})",
-                        word
-                    ),
-                }));
-            }
-        }
-        _ => {
-            return Some(Err(GenericError {
-                message: format!(
-                    "STORE32_UNHANDLED_MEMLCONTROL_WRITE (0x{:x})",
-                    word
-                ),
-            }));
-        }
-    }
-    None
-}
-
-fn handle_memlcontrol_read(offset: u32) -> u32 {
-    match offset {
-        0 => 0x1f000000,
-        4 => 0x1f802000,
-        _ => 0
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     bios::Bios,
     decoded_instruction::{DecodedInstruction, EOpType, FOpType, IOpType, JOpType, ROpType},
     generic_error::GenericError,
-    logger::handle_critical_result,
+    logger::{handle_critical_result, handle_result},
     memory::Memory,
 };
 
@@ -11,6 +11,8 @@ pub struct Cpu {
     pub pc: u32,
     pub memory: Memory,
     pub gpr: [u32; 32], // General Purpose Registers ($0 - $31)
+    pub branch_delay_slot: u32,
+    pub sr: u32,
 }
 
 impl Cpu {
@@ -19,14 +21,18 @@ impl Cpu {
             pc: 0xbfc00000,
             memory: Memory::new(),
             gpr: [0; 32],
+            branch_delay_slot: 0x00000000, // nop
+            sr: 0x00000000,
         }
     }
 
     pub fn run_next_instruction(&mut self, print: bool) {
         let pc = self.pc;
-        let instruction = self.fetch32(pc);
+        let instruction = self.load32(pc);
 
         self.pc = pc.wrapping_add(4);
+
+        self.branch_delay_slot = self.load32(self.pc);
 
         let result = self.decode_and_execute(instruction, print);
         handle_critical_result(result, Some("Instruction processing error:"));
@@ -59,23 +65,23 @@ impl Cpu {
                 ROpType::Mult => self.instruction_error(format!("{:?}", op), instruction, false),
                 ROpType::Nop => self.nop(print),
                 ROpType::Nor => self.instruction_error(format!("{:?}", op), instruction, false),
-                ROpType::Or => self.instruction_error(format!("{:?}", op), instruction, false),
-                ROpType::Sll => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Or => self.or(rs, rt, rd, print),
+                ROpType::Sll => self.sll(rt, rd, shamt, print),
                 ROpType::Slt => self.instruction_error(format!("{:?}", op), instruction, false),
                 ROpType::Sltu => self.instruction_error(format!("{:?}", op), instruction, false),
-                ROpType::Srl => self.instruction_error(format!("{:?}", op), instruction, false),
+                ROpType::Srl => self.srl(rt, rd, shamt, print),
                 ROpType::Sub => self.instruction_error(format!("{:?}", op), instruction, false),
                 ROpType::Subu => self.instruction_error(format!("{:?}", op), instruction, false),
                 ROpType::Syscall => self.instruction_error(format!("{:?}", op), instruction, false),
                 ROpType::Xor => self.instruction_error(format!("{:?}", op), instruction, false),
             },
             DecodedInstruction::I { op, rs, rt, imm } => match op {
-                IOpType::Addi => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Addi => self.addi(rt, rs, imm, print),
                 IOpType::Addiu => self.addiu(rt, rs, imm, print),
                 IOpType::Andi => self.instruction_error(format!("{:?}", op), instruction, false),
                 IOpType::Beq => self.instruction_error(format!("{:?}", op), instruction, false),
                 IOpType::Blez => self.instruction_error(format!("{:?}", op), instruction, false),
-                IOpType::Bne => self.instruction_error(format!("{:?}", op), instruction, false),
+                IOpType::Bne => self.bne(rs, rt, imm, print),
                 IOpType::Lb => self.instruction_error(format!("{:?}", op), instruction, false),
                 IOpType::Lbu => self.instruction_error(format!("{:?}", op), instruction, false),
                 IOpType::Ldc1 => self.instruction_error(format!("{:?}", op), instruction, false),
@@ -89,10 +95,10 @@ impl Cpu {
                 IOpType::Sh => self.instruction_error(format!("{:?}", op), instruction, false),
                 IOpType::Slti => self.instruction_error(format!("{:?}", op), instruction, false),
                 IOpType::Sltiu => self.instruction_error(format!("{:?}", op), instruction, false),
-                IOpType::Sw => self.sw(rt, rs, imm, print),
+                IOpType::Sw => self.sw(rs, rt, imm, print),
             },
             DecodedInstruction::J { op, addr } => match op {
-                JOpType::J => self.instruction_error(format!("{:?}", op), instruction, false),
+                JOpType::J => self.j(addr, print),
                 JOpType::Jal => self.instruction_error(format!("{:?}", op), instruction, false),
             },
             DecodedInstruction::F { op, rt, rs, rd } => match op {
@@ -108,6 +114,7 @@ impl Cpu {
                 FOpType::Mtc1 => self.instruction_error(format!("{:?}", op), instruction, false),
                 FOpType::Muld => self.instruction_error(format!("{:?}", op), instruction, false),
                 FOpType::Muls => self.instruction_error(format!("{:?}", op), instruction, false),
+                FOpType::Mtc0 => self.mtc0(rt, rs, print),
             },
             DecodedInstruction::E { op, instruction } => match op {
                 EOpType::Unknown => self.instruction_error(format!("{:?}", op), instruction, true),
@@ -139,9 +146,27 @@ impl Cpu {
         })
     }
 
-    pub fn fetch32(&self, address: u32) -> u32 {
+    pub fn load32(&self, address: u32) -> u32 {
         let result = self.memory.load32(address);
         handle_critical_result(result, Some("Instruction fetch error:"))
+    }
+
+    pub fn store32(&mut self, address: u32, word: u32) {
+        let message = Some("Memory write soft error:");
+        let result = if self.sr & 0x10000 != 0 {
+            Err(GenericError {
+                message: format!("IGNORE_WRITE_ON_ISOLATED_CACHE (at 0x{:x})", self.pc - 4),
+            })
+        } else {
+            Ok(())
+        };
+
+        if result.is_err() {
+            handle_result(result, message);
+        } else {
+            let result = self.memory.store32(address, word);
+            handle_critical_result(result, message)
+        }
     }
 
     pub fn load_bios(&mut self, bios: Bios) {

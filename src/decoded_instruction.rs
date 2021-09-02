@@ -67,6 +67,7 @@ pub enum FOpType {
     Mtc1,
     Muld,
     Muls,
+    Mtc0
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -90,7 +91,7 @@ pub enum DecodedInstruction {
     },
     J {
         op: JOpType,
-        addr: i32,
+        addr: u32,
     },
     F {
         op: FOpType,
@@ -127,7 +128,7 @@ impl DecodedInstruction {
     }
 
     /// Constructs a new `J`-type instruction from a word.
-    fn new_j(op: JOpType, word: i32) -> Self {
+    fn new_j(op: JOpType, word: u32) -> Self {
         Self::J {
             op,
             addr: word & 0x3ffffff,
@@ -195,6 +196,7 @@ impl From<u32> for DecodedInstruction {
             (0x11, 0x21, 0x14) => DecodedInstruction::new_f(Cvtdw, word),
             (0x11, .., 0x0) => DecodedInstruction::new_f(Mfc1, word),
             (0x11, .., 0x4) => DecodedInstruction::new_f(Mtc1, word),
+            (0x10, ..) => DecodedInstruction::new_f(Mtc0, word),
             (0x08, ..) => DecodedInstruction::new_i(Addi, word),
             (0x09, ..) => DecodedInstruction::new_i(Addiu, word),
             (0x0A, ..) => DecodedInstruction::new_i(Slti, word),
@@ -215,8 +217,8 @@ impl From<u32> for DecodedInstruction {
             (0x29, ..) => DecodedInstruction::new_i(Sh, word),
             (0x31, ..) => DecodedInstruction::new_i(Lwc1, word),
             (0x35, ..) => DecodedInstruction::new_i(Ldc1, word),
-            (0x2, ..) => DecodedInstruction::new_j(J, word as i32),
-            (0x3, ..) => DecodedInstruction::new_j(Jal, word as i32),
+            (0x2, ..) => DecodedInstruction::new_j(J, word),
+            (0x3, ..) => DecodedInstruction::new_j(Jal, word),
             (..) => DecodedInstruction::new_e(Unknown, word),
         }
     }

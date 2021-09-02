@@ -21,21 +21,18 @@ impl Cpu {
         Ok(())
     }
 
-    pub fn sw(&mut self, rt: u32, rs: u32, imm: u32, print: bool) -> Result<(), GenericError> {
-        let base = self.gpr[rs as usize] as i32;
-        let offset = imm as i32;
-        let value = self.gpr[rt as usize];
+    pub fn sw(&mut self, rs: u32, rt: u32, imm: u32, print: bool) -> Result<(), GenericError> {
+        let base = self.reg(rs);
+        let value = self.reg(rt);
+        let target = base.wrapping_add(imm);
 
-        let result = self.memory.store32((base + offset) as u32, value);
+        self.store32(target, value);
 
-        if result.is_err() {
-            return result;
-        } else {
-            if print {
-                println!("sw ${}, 0x{:x}(${})", rt, offset, rs);
-            }
-            Ok(())
+        if print {
+            println!("sw ${}, 0x{:x}(${})", rt, imm, rs);
         }
+
+        Ok(())
     }
 
     pub fn nop(&self, print: bool) -> Result<(), GenericError> {
@@ -53,5 +50,110 @@ impl Cpu {
         }
 
         Ok(())
+    }
+
+    pub fn sll(&mut self, rt: u32, rd: u32, shamt: u32, print: bool) -> Result<(), GenericError> {
+        self.set_reg(rd, self.reg(rt) << shamt);
+
+        if print {
+            println!("sll ${}, ${}, 0x{:x}", rd, rt, shamt);
+        }
+
+        Ok(())
+    }
+
+    pub fn srl(&mut self, rt: u32, rd: u32, shamt: u32, print: bool) -> Result<(), GenericError> {
+        self.set_reg(rd, self.reg(rt) >> shamt);
+
+        if print {
+            println!("srl ${}, ${}, 0x{:x}", rd, rt, shamt);
+        }
+
+        Ok(())
+    }
+
+    pub fn j(&mut self, addr: u32, print: bool) -> Result<(), GenericError> {
+        if print {
+            println!("j 0x{:x}", addr);
+        }
+
+        // Execute instruction at the branch delay slot
+        let result = self.decode_and_execute(self.branch_delay_slot, print);
+
+        if result.is_err() {
+            return result;
+        } else {
+            self.pc = (self.pc & 0xf0000000) | (addr << 2);
+            Ok(())
+        }
+    }
+
+    pub fn or(&mut self, rs: u32, rt: u32, rd: u32, print: bool) -> Result<(), GenericError> {
+        self.set_reg(rd, self.reg(rs) | self.reg(rt));
+
+        if print {
+            println!("or ${}, ${}, ${}", rd, rs, rt);
+        }
+
+        Ok(())
+    }
+
+    pub fn mtc0(&mut self, rt: u32, rs: u32, print: bool) -> Result<(), GenericError> {
+        match rs {
+            12 => {
+                self.sr = self.reg(rt);
+
+                if print {
+                    println!("mtc0 ${}, ${}", rt, rs);
+                }
+
+                Ok(())
+            }
+            _ => Err(GenericError {
+                message: format!("UNHANDLED_COP0_REGISTER (${})", rs),
+            }),
+        }
+    }
+
+    fn relative_branch(&mut self, offset: u32, print: bool) -> Result<(), GenericError> {
+        let result = self.decode_and_execute(self.branch_delay_slot, print);
+
+        if result.is_err() {
+            return result;
+        }
+
+        self.pc = self.pc.wrapping_add(offset << 2);
+        Ok(())
+    }
+
+    pub fn bne(&mut self, rs: u32, rt: u32, imm: u32, print: bool) -> Result<(), GenericError> {
+        if print {
+            println!("bne ${}, ${}, 0x{:x}", rs, rt, imm)
+        }
+
+        if self.reg(rs) == self.reg(rt) {
+            let result = self.relative_branch(imm, print);
+            if result.is_err() {
+                return result;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn addi(&mut self, rt: u32, rs: u32, imm: u32, print: bool) -> Result<(), GenericError> {
+        if let Some(sum) = self.reg(rs).checked_add(imm) {
+            self.set_reg(rt, sum);
+
+            if print {
+                println!("addi ${}, ${}, 0x{:x}", rt, rs, imm);
+            }
+
+            Ok(())
+        } else {
+            return Err(GenericError {
+                message: format!("ADDI_ARITHMETIC_OVERFLOW"),
+            });
+        }
     }
 }
